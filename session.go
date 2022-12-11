@@ -21,17 +21,19 @@ type Session struct {
 	rwmutex    *sync.RWMutex
 }
 
-func (s *Session) writeMessage(message *envelope) {
+func (s *Session) writeMessage(message *envelope) error {
 	if s.closed() {
 		s.melody.errorHandler(s, ErrWriteClosed)
-		return
+		return ErrWriteClosed
 	}
 
 	select {
 	case s.output <- message:
 	default:
 		s.melody.errorHandler(s, ErrMessageBufferFull)
+		return ErrMessageBufferFull
 	}
+	return nil
 }
 
 func (s *Session) writeRaw(message *envelope) error {
@@ -147,9 +149,8 @@ func (s *Session) Write(msg []byte) error {
 		return ErrSessionClosed
 	}
 
-	s.writeMessage(&envelope{t: websocket.TextMessage, msg: msg})
+	return s.writeMessage(&envelope{t: websocket.TextMessage, msg: msg})
 
-	return nil
 }
 
 // WriteBinary writes a binary message to session.
@@ -158,9 +159,8 @@ func (s *Session) WriteBinary(msg []byte) error {
 		return ErrSessionClosed
 	}
 
-	s.writeMessage(&envelope{t: websocket.BinaryMessage, msg: msg})
+	return s.writeMessage(&envelope{t: websocket.BinaryMessage, msg: msg})
 
-	return nil
 }
 
 // Close closes session.
